@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Daily evaluation – interactive prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6EDF2; --surface:#F6F9FB; --card:#FFFFFF; --ink:#15263A; --muted:#6E8092;
+  --line:#CBD6DF; --tone:#DCE4EA; --red:#E5484D; --brand:#15263A; --brand-ink:#FFFFFF;
+  --accent:#1B8F8A; --amber:#FFB020; --blob-ink:#15263A;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C131A; --surface:#15202B; --card:#1C2A37; --ink:#E8EEF3; --muted:#8FA1B2;
+    --line:#2B3A48; --tone:#2A3846; --brand:#E8EEF3; --brand-ink:#15263A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C131A; --surface:#15202B; --card:#1C2A37; --ink:#E8EEF3; --muted:#8FA1B2;
+  --line:#2B3A48; --tone:#2A3846; --brand:#E8EEF3; --brand-ink:#15263A;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+html,body{margin:0}
+body{height:100%;background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+
+.stage{height:100%;display:flex;align-items:center;justify-content:center;gap:64px;padding:20px}
+.side{width:260px;display:none}
+.side h2{font-size:22px;line-height:1.15;margin:0 0 8px;letter-spacing:-.01em}
+.side p{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 14px}
+.side .step{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;margin-bottom:18px}
+.side button{background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:9px 18px;font-weight:600;cursor:pointer}
+.side button:hover{border-color:var(--ink)}
+@media (min-width:880px){.side{display:block}}
+
+.phone{position:relative;width:390px;height:min(820px,100%);background:var(--surface);border-radius:44px;overflow:hidden;box-shadow:0 0 0 10px #0B141D,0 30px 70px -20px rgba(8,18,30,.55)}
+@media (max-width:520px){
+  .stage{padding:0;gap:0}
+  .phone{width:100%;height:100%;border-radius:0;box-shadow:none}
+}
+.screen{position:absolute;inset:0}
+.screen.enter{animation:enter .28s ease-out}
+@keyframes enter{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+.page{height:100%;overflow-y:auto;padding:28px 24px 120px}
+.page.day{overflow:hidden;padding:26px 0 0;display:flex;flex-direction:column}
+.page.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:140px}
+h1{font-size:27px;line-height:1.15;letter-spacing:-.02em;font-weight:800;margin:0 0 10px}
+.lead{font-size:16px;line-height:1.45;color:var(--muted);margin:0 0 22px}
+.lead.sm{font-size:13.5px;margin-bottom:10px}
+.lead b{color:var(--ink)}
+.hint{font-size:13px;color:var(--muted);min-height:18px;margin:10px 0 0}
+.dayhdr{padding:0 24px}
+
+.mark{width:76px;height:76px;margin-bottom:26px;background:linear-gradient(135deg,#FF7B7B,#E5484D);color:#fff;display:grid;place-items:center;border-radius:58% 42% 55% 45%/52% 58% 42% 48%}
+.mark svg{width:42px;height:42px}
+.fld{display:block;margin:14px 0}
+.fld>span{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+.fld input,.notes{width:100%;font:inherit;font-size:17px;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;outline:none}
+.notes{min-height:120px;resize:none;font-size:16px;line-height:1.4}
+.fld input:focus,.notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+
+.fabwrap{position:absolute;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:20}
+.fab{border:0;background:var(--brand);color:var(--brand-ink);font-weight:800;font-size:16px;padding:15px 30px;border-radius:999px;cursor:pointer;box-shadow:0 10px 22px -10px rgba(10,20,32,.6);transition:transform .15s,background .2s,color .2s,box-shadow .2s;min-width:96px}
+.fab:active:not(:disabled){transform:scale(.96)}
+.fab:disabled{background:var(--tone);color:var(--muted);box-shadow:none;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+.back{position:absolute;top:18px;left:14px;width:42px;height:42px;border-radius:50%;border:0;background:var(--card);display:grid;place-items:center;cursor:pointer;z-index:5;box-shadow:0 1px 0 var(--line)}
+.back svg{width:20px;height:20px}
+.page.sub{padding-top:78px}
+
+/* blobs */
+.blob{--s:96px;width:var(--s);height:var(--s);border:0;padding:6px;background:var(--tone);color:var(--muted);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;position:relative;transition:background .25s,border-radius .4s,transform .2s,color .2s,box-shadow .25s}
+.blob .em{font-size:calc(var(--s)*.34);line-height:1;filter:grayscale(1);opacity:.55;transition:opacity .2s,filter .2s}
+.blob .nm{font-size:calc(var(--s)*.122);font-weight:800;letter-spacing:.02em;line-height:1.05;text-align:center}
+.blob.on{background:var(--c);color:var(--blob-ink);border-radius:var(--r2);transform:scale(1.05);box-shadow:0 10px 20px -10px var(--c)}
+.blob.on .em{filter:none;opacity:1}
+.blob:active{transform:scale(.94)}
+.blob .cnt{position:absolute;top:0;right:2px;min-width:22px;height:22px;border-radius:11px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:800;display:grid;place-items:center;padding:0 5px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 4px;justify-items:center;margin-top:8px}
+
+/* day layout */
+.split{flex:1;min-height:0;display:flex}
+.tlscroll{width:55%;overflow-y:auto;padding-bottom:110px;scrollbar-width:thin}
+.tlscroll.full{width:100%}
+.bcol{flex:1;overflow-y:auto;padding:6px 10px 110px;display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:14px 4px;justify-items:center;align-content:start;scrollbar-width:none}
+.bcol .blob{--s:78px}
+
+/* timeline */
+.tl{position:relative;width:100%}
+.axis{position:absolute;left:51px;width:3px;margin-left:-1.5px;background:var(--line);border-radius:2px}
+.tick{position:absolute;left:0;right:0;height:0}
+.tick span{position:absolute;left:0;width:41px;text-align:right;font-size:11px;font-weight:600;color:var(--muted);transform:translateY(-50%)}
+.tick::after{content:"";position:absolute;left:47px;width:8px;height:1.5px;background:var(--line)}
+.tick.end::after{left:44px;width:14px;background:var(--ink);height:2px}
+.tick.end span{color:var(--ink);font-weight:800}
+.tick.end b{position:absolute;left:64px;top:8px;font-size:11px;font-weight:700;color:var(--muted)}
+.bars{position:absolute;left:64px;right:6px;top:0;bottom:0}
+.bar{position:absolute;border:0;border-radius:10px;background:var(--c);color:var(--blob-ink);padding:4px 6px;text-align:left;overflow:hidden;font-size:10.5px;font-weight:800;line-height:1.2;cursor:pointer;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);animation:grow .35s ease-out;transform-origin:top}
+@keyframes grow{from{transform:scaleY(.2);opacity:0}to{transform:none;opacity:1}}
+.bar span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .bt{font-weight:600;opacity:.75}
+.dlbl{position:absolute;left:0;width:41px;text-align:right;font-size:11px;font-weight:800;color:var(--red);transform:translateY(-50%)}
+.dline{position:absolute;left:51px;right:6px;border-top:1.5px dashed color-mix(in srgb,var(--red) 55%,transparent);z-index:2;pointer-events:none}
+.dot{position:absolute;left:51px;width:16px;height:16px;transform:translate(-50%,-50%);border-radius:50%;background:var(--red);border:2.5px solid var(--surface);box-shadow:0 0 0 1.5px var(--red);padding:0;z-index:4}
+.dot.tap{cursor:pointer}
+.dot.tap::after{content:"";position:absolute;inset:-14px}
+.dot.pulse::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid var(--red);animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.25);opacity:0}}
+.pill{position:absolute;left:68px;transform:translateY(-50%);z-index:5;display:flex;align-items:center;gap:7px;border:1.5px solid var(--red);background:var(--card);border-radius:999px;padding:4px 12px 4px 4px;font-size:12px;font-weight:700;cursor:pointer;max-width:calc(100% - 76px)}
+.pill.done{border-color:var(--accent);padding:3px 10px 3px 4px}
+.pill i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-weight:800;flex:none}
+.pill .ex{background:var(--amber);color:var(--blob-ink);font-size:14px}
+.pill .ok{background:var(--accent);color:#fff;font-size:12px}
+.pill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* activity page */
+.titlerow{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.titlerow .blob{--s:56px;cursor:default;pointer-events:none}
+.titlerow h1{margin:0}
+.sec{font-size:13px;font-weight:700;margin:22px 0 8px}
+.times{display:flex;gap:12px}
+.tbox{flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:10px 12px}
+.tbox label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.tsel{display:flex;align-items:center;gap:4px;font-size:24px;font-weight:800}
+.tsel select{font:inherit;color:var(--ink);background:transparent;border:0;border-radius:8px;padding:4px 2px;appearance:none;-webkit-appearance:none;text-align:center;cursor:pointer;min-width:42px}
+.tsel select:focus-visible{outline:3px solid var(--accent)}
+.err{color:var(--red);font-size:13px;font-weight:600;min-height:18px;margin:8px 0 0}
+.link{background:none;border:0;color:var(--muted);font-weight:600;font-size:14px;text-decoration:underline;cursor:pointer;padding:8px 0}
+.link.danger{color:var(--red)}
+.ghost{background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:11px 20px;font-weight:700;font-size:14px;cursor:pointer}
+.ghost:hover{border-color:var(--ink)}
+.bigtime{font-size:46px;letter-spacing:-.03em}
+
+/* clock */
+.clockwrap{display:flex;justify-content:center;margin:6px 0 8px;touch-action:none}
+#clk{width:260px;height:260px;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
+.cf{fill:var(--card);stroke:var(--line);stroke-width:2}
+.hand{stroke:var(--brand);stroke-width:3;stroke-linecap:round}
+.knob{fill:var(--brand)}
+.cnum{font-size:15px;font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.cnum.sel{fill:var(--brand-ink)}
+.digital{display:flex;align-items:center;justify-content:center;gap:2px;font-size:46px;font-weight:800;letter-spacing:-.02em}
+.seg{background:transparent;border:0;border-radius:14px;padding:2px 12px;font-size:inherit;font-weight:800;color:var(--muted);cursor:pointer;letter-spacing:inherit}
+.seg.act{background:var(--tone);color:var(--ink)}
+.ampm{display:flex;flex-direction:column;gap:4px;margin-left:12px}
+.ampm button{border:1.5px solid var(--line);background:transparent;border-radius:10px;padding:3px 10px;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer}
+.ampm button.act{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+
+/* done / lock */
+.bigblob{width:110px;height:110px;margin-bottom:26px;display:grid;place-items:center;font-size:44px;color:var(--blob-ink);background:linear-gradient(135deg,#8FD694,#4FD1B5);border-radius:58% 42% 55% 45%/52% 58% 42% 48%}
+.bigblob.moon{background:linear-gradient(135deg,#8F9BFF,#C58BFF)}
+.center .lead{max-width:290px}
+.lock{position:absolute;inset:0;background:linear-gradient(170deg,#1B2D4A,#0B1626 70%);color:#fff;display:flex;flex-direction:column;align-items:center;padding:76px 20px 0}
+.lock .lt{font-size:78px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.lock .ld{font-size:17px;opacity:.8;margin-top:6px}
+.notif{margin-top:64px;width:100%;border:0;text-align:left;background:rgba(255,255,255,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:22px;padding:14px 16px;display:flex;gap:12px;color:#fff;cursor:pointer;animation:buzz 2.4s ease-in-out infinite}
+@keyframes buzz{0%,86%,100%{transform:none}90%{transform:translateX(-4px)}94%{transform:translateX(4px)}97%{transform:translateX(-2px)}}
+.notif .ico{width:40px;height:40px;flex:none;background:linear-gradient(135deg,#FF7B7B,#E5484D);display:grid;place-items:center;border-radius:12px}
+.notif .ico svg{width:24px;height:24px}
+.notif b{display:block;font-size:15px;margin-bottom:2px}
+.notif span{font-size:14px;line-height:1.35;opacity:.9}
+.lock .tip{margin-top:20px;font-size:13px;opacity:.65}
+
+ol.how{list-style:none;padding:0;margin:0 0 22px;counter-reset:s}
+ol.how li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;font-size:15.5px;line-height:1.35}
+ol.how li::before{content:counter(s);flex:none;width:28px;height:28px;border-radius:50%;background:var(--brand);color:var(--brand-ink);font-weight:800;display:grid;place-items:center;font-size:14px}
+.bottombar{position:absolute;left:20px;right:20px;bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center}
+.bottombar .ghost{width:100%;padding:15px;font-size:16px;background:var(--card)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="side">
+    <h2>Daily evaluation</h2>
+    <p>Clickable prototype of the patient app for AFib monitoring. Use it like a phone: click, type and drag the clock.</p>
+    <span class="step" id="steplbl">Set-up</span>
+    <p>The red dots on the timeline are simulated presses of the button on the heart-rate monitor.</p>
+    <button id="restart">Restart prototype</button>
+  </aside>
+  <div class="phone" id="phone">
+    <div class="screen" id="screen"></div>
+    <div class="fabwrap" id="fabwrap" hidden><button class="fab" id="fab"></button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var DAY_START=360, PPM=0.8, MIN_EVAL=17*60;
+var pad2=function(n){return String(n).padStart(2,'0')};
+var fmt=function(m){return pad2(Math.floor(m/60))+':'+pad2(m%60)};
+var $=function(s,r){return (r||document).querySelector(s)};
+var esc=function(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+
+var ACTS=[
+ {k:'work',n:'WORK',e:'💼',c:'#6CB8FF'},
+ {k:'sports',n:'SPORTS',e:'🏃',c:'#FF8A65'},
+ {k:'cooking',n:'COOKING',e:'🍳',c:'#FFC24B'},
+ {k:'commuting',n:'COMMUTING',e:'🚌',c:'#8F9BFF'},
+ {k:'housework',n:'HOUSEWORK',e:'🧹',c:'#4FD1B5'},
+ {k:'shopping',n:'SHOPPING',e:'🛍️',c:'#FF8FC0'},
+ {k:'social',n:'SOCIALISING',e:'💬',c:'#C58BFF'},
+ {k:'meals',n:'MEALS',e:'🍽️',c:'#A5D95A'},
+ {k:'coffee',n:'COFFEE',e:'☕',c:'#E2B07E'},
+ {k:'alcohol',n:'ALCOHOL',e:'🍷',c:'#E58EA4'},
+ {k:'relax',n:'RELAXING',e:'🛋️',c:'#5AD3E8'},
+ {k:'walking',n:'WALKING',e:'🚶',c:'#8FD694'}
+];
+var SYMS=[
+ {k:'chest',n:'STINGING CHEST',l:'Stinging chest',e:'⚡',c:'#FF7B7B'},
+ {k:'sweat',n:'COLD SWEAT',l:'Cold sweat',e:'💧',c:'#FF9F7B'},
+ {k:'dizzy',n:'DIZZINESS',l:'Dizziness',e:'😵‍💫',c:'#F78CC0'},
+ {k:'racing',n:'RACING HEART',l:'Racing heart',e:'💓',c:'#FF6F91'},
+ {k:'breath',n:'SHORT OF BREATH',l:'Short of breath',e:'🌬️',c:'#E58AE8'}
+];
+var SHAPES=[
+ '58% 42% 55% 45% / 52% 58% 42% 48%',
+ '44% 56% 40% 60% / 58% 44% 56% 42%',
+ '52% 48% 62% 38% / 44% 60% 40% 56%',
+ '60% 40% 46% 54% / 48% 52% 48% 52%',
+ '46% 54% 58% 42% / 60% 42% 58% 40%'
+];
+var STEPS={mitid:'Set-up · MitID',time:'Set-up · Evaluation time',done:'Set-up complete',lock:'Reminder arrives',info:'First evaluation · Introduction',pick:'Pick today\u2019s activities',overview:'Day overview',activity:'Activity details',sympList:'Symptom review',symptom:'Symptom details',bye:'Finished',review:'Day overview (editable)'};
+
+var screen=$('#screen'), fab=$('#fab'), fabWrap=$('#fabwrap'), stepLbl=$('#steplbl');
+var S;
+
+function fresh(){
+  S={page:'mitid',mitid:'',T:{h:21,m:30},mode:'h',acts:[],entries:[],dots:[],uid:1,editId:null,actKey:null,dotId:null,from:'overview',tl:0};
+}
+function evalMin(){return S.T.h*60+S.T.m}
+
+function setFab(label,enabled,fn){
+  fabWrap.hidden=!label;
+  if(!label)return;
+  fab.textContent=label;
+  fab.disabled=!enabled;
+  fab.onclick=function(){if(!fab.disabled)fn()};
+}
+function enableFab(b){fab.disabled=!b}
+
+function go(p){
+  S.page=p;
+  screen.className='screen';
+  void screen.offsetWidth;
+  screen.className='screen enter';
+  stepLbl.textContent=STEPS[p]||'';
+  ({mitid:pMitid,time:pTime,done:pDone,lock:pLock,info:pInfo,pick:pPick,
+    overview:function(){pDay('overview')},review:function(){pDay('review')},
+    activity:pAct,sympList:pSymList,symptom:pSym,bye:pBye})[p]();
+}
+
+function makeDots(){
+  var len=evalMin()-DAY_START;
+  S.dots=[[.2,3],[.47,-4],[.78,11]].map(function(a,i){
+    return {id:i+1,t:Math.round(DAY_START+len*a[0])+a[1],sel:{}};
+  });
+}
+
+/* ---------- blobs ---------- */
+function blob(it,i,o){
+  o=o||{};
+  return '<button class="blob'+(o.on?' on':'')+'" data-k="'+it.k+'" style="--c:'+it.c+';--r:'+SHAPES[i%5]+';--r2:'+SHAPES[(i+2)%5]+(o.size?';--s:'+o.size+'px':'')+'" aria-pressed="'+(!!o.on)+'">'
+   +'<span class="em">'+it.e+'</span><span class="nm">'+it.n+'</span>'+(o.count?'<span class="cnt">'+o.count+'</span>':'')+'</button>';
+}
+
+/* ---------- Set-up 1: MitID ---------- */
+function pMitid(){
+  screen.innerHTML='<div class="page">'
+   +'<div class="mark"><svg viewBox="0 0 48 48"><path d="M4 26h10l4-10 6 20 5-14 3 4h12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'
+   +'<h1>Welcome</h1><p class="lead">Log in with your MitID to connect your heart monitor diary.</p>'
+   +'<label class="fld"><span>MitID user ID</span><input id="mid" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Enter your user ID" value="'+esc(S.mitid)+'"></label>'
+   +'<p class="hint" id="midh"></p></div>';
+  var inp=$('#mid');
+  var valid=function(v){return /^[A-Za-z0-9._-]{4,24}$/.test(v)};
+  var upd=function(){
+    S.mitid=inp.value.trim();
+    var ok=valid(S.mitid);
+    enableFab(ok);
+    $('#midh').textContent=(S.mitid&&!ok)?'Use 4 to 24 letters or numbers, with no spaces.':'';
+  };
+  inp.addEventListener('input',upd);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&valid(S.mitid))go('time')});
+  setFab('Next',valid(S.mitid),function(){go('time')});
+}
+
+/* ---------- Set-up 2: time ---------- */
+function clockInner(){
+  var hMode=S.mode==='h';
+  var ang=(hMode?(S.T.h%12)*30:S.T.m*6)*Math.PI/180;
+  var kx=130+92*Math.sin(ang), ky=130-92*Math.cos(ang);
+  var hx=130+70*Math.sin(ang), hy=130-70*Math.cos(ang);
+  var s='<circle class="cf" cx="130" cy="130" r="124"/>';
+  s+='<line class="hand" x1="130" y1="130" x2="'+hx+'" y2="'+hy+'"/><circle class="knob" cx="130" cy="130" r="5"/><circle class="knob" cx="'+kx+'" cy="'+ky+'" r="20"/>';
+  for(var i=0;i<12;i++){
+    var a=i*30*Math.PI/180, x=130+92*Math.sin(a), y=130-92*Math.cos(a);
+    var label=hMode?(i===0?12:i):pad2(i*5);
+    var sel=hMode?(S.T.h%12===i):(S.T.m===i*5);
+    s+='<text class="cnum'+(sel?' sel':'')+'" x="'+x+'" y="'+y+'">'+label+'</text>';
+  }
+  return s;
+}
+function pTime(){
+  screen.innerHTML='<div class="page">'
+   +'<h1>When would you like to do your daily evaluation?</h1>'
+   +'<p class="lead">Pick a time late in the day, maybe before bedtime.</p>'
+   +'<div class="clockwrap"><svg id="clk" viewBox="0 0 260 260" role="img" aria-label="Turn the clock to set a time"></svg></div>'
+   +'<div class="digital"><button class="seg" id="dh" aria-label="Hours"></button><span>:</span><button class="seg" id="dm" aria-label="Minutes"></button>'
+   +'<div class="ampm"><button id="am">AM</button><button id="pm">PM</button></div></div>'
+   +'<p class="hint" id="th" style="text-align:center"></p></div>';
+  var svg=$('#clk'), dragging=false;
+  var update=function(){
+    svg.innerHTML=clockInner();
+    $('#dh').textContent=pad2(S.T.h); $('#dm').textContent=pad2(S.T.m);
+    $('#dh').classList.toggle('act',S.mode==='h'); $('#dm').classList.toggle('act',S.mode==='m');
+    $('#am').classList.toggle('act',S.T.h<12); $('#pm').classList.toggle('act',S.T.h>=12);
+    var ok=evalMin()>=MIN_EVAL;
+    $('#th').textContent=ok?'':'Choose a time after 17:00 so the whole day is covered.';
+    enableFab(ok);
+  };
+  var fromEvent=function(e){
+    var r=svg.getBoundingClientRect();
+    var x=e.clientX-(r.left+r.width/2), y=e.clientY-(r.top+r.height/2);
+    var a=Math.atan2(x,-y)*180/Math.PI; if(a<0)a+=360;
+    if(S.mode==='h'){var h12=Math.round(a/30)%12; S.T.h=h12+(S.T.h>=12?12:0);}
+    else{S.T.m=(Math.round(a/30)*5)%60;}
+    update();
+  };
+  svg.addEventListener('pointerdown',function(e){dragging=true;try{svg.setPointerCapture(e.pointerId)}catch(_){}fromEvent(e)});
+  svg.addEventListener('pointermove',function(e){if(dragging)fromEvent(e)});
+  var end=function(){if(!dragging)return;dragging=false;if(S.mode==='h'){S.mode='m';update();}};
+  svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end);
+  $('#dh').onclick=function(){S.mode='h';update()};
+  $('#dm').onclick=function(){S.mode='m';update()};
+  $('#am').onclick=function(){S.T.h=S.T.h%12;update()};
+  $('#pm').onclick=function(){S.T.h=S.T.h%12+12;update()};
+  S.mode='h';
+  update();
+  setFab('OK',evalMin()>=MIN_EVAL,function(){go('done')});
+}
+
+function pDone(){
+  setFab(null);
+  screen.innerHTML='<div class="page center"><div class="bigblob">✓</div><h1>You\u2019re all set</h1>'
+   +'<p class="lead">We\u2019ll remind you every day at <b>'+fmt(evalMin())+'</b>. You can close the app now.</p>'
+   +'<button class="ghost" id="skip">Prototype: jump to the reminder</button></div>';
+  $('#skip').onclick=function(){go('lock')};
+}
+
+function pLock(){
+  setFab(null);
+  var d=new Date();
+  var ds=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  screen.innerHTML='<div class="lock"><div class="ld">'+esc(ds)+'</div><div class="lt">'+fmt(evalMin())+'</div>'
+   +'<button class="notif" id="nt"><span class="ico"><svg viewBox="0 0 48 48"><path d="M4 26h10l4-10 6 20 5-14 3 4h12" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
+   +'<span><b>Time for your daily evaluation</b><span>Look back at your day. It takes about 3 minutes.</span></span></button>'
+   +'<p class="tip">Tap the notification to open the app</p></div>';
+  $('#nt').onclick=function(){go('info')};
+}
+
+/* ---------- Day 1: info ---------- */
+function pInfo(){
+  makeDots();
+  screen.innerHTML='<div class="page"><h1>Your daily evaluation</h1>'
+   +'<p class="lead">Every evening you look back at your day, so your doctor can match your heart rhythm to what you were doing.</p>'
+   +'<ol class="how"><li>Choose what you did today</li><li>Place each activity on your timeline</li><li>Tell us what you felt when you pressed the button on your heart monitor</li></ol>'
+   +'<p class="lead sm">It takes about 3 minutes.</p></div>';
+  setFab('OK',true,function(){go('pick')});
+}
+
+/* ---------- Day 2: pick activities ---------- */
+function pPick(){
+  screen.innerHTML='<div class="page"><h1>What have you been up to today?</h1>'
+   +'<p class="lead">Tap everything that applies.</p>'
+   +'<div class="grid">'+ACTS.map(function(a,i){return blob(a,i,{on:S.acts.indexOf(a.k)>-1})}).join('')+'</div></div>';
+  setFab('Next',S.acts.length>0,function(){S.tl=0;go('overview')});
+  screen.querySelectorAll('.blob').forEach(function(b){
+    b.onclick=function(){
+      var k=b.dataset.k, i=S.acts.indexOf(k);
+      if(i>-1)S.acts.splice(i,1);else S.acts.push(k);
+      b.classList.toggle('on',i<0); b.setAttribute('aria-pressed',i<0);
+      enableFab(S.acts.length>0);
+    };
+  });
+}
+
+/* ---------- timeline ---------- */
+function timeline(o){
+  var st=DAY_START,en=evalMin(),H=(en-st)*PPM,P=26;
+  var Y=function(t){return P+(t-st)*PPM};
+  var h='<div class="tl" style="height:'+(H+P*2)+'px"><div class="axis" style="top:'+P+'px;height:'+H+'px"></div>';
+  var dy=S.dots.map(function(d){return Y(d.t)});
+  for(var hr=Math.ceil(st/60);hr*60<en;hr++){
+    var y=Y(hr*60);
+    if(dy.some(function(v){return Math.abs(v-y)<10}))continue;
+    h+='<div class="tick" style="top:'+y+'px"><span>'+pad2(hr)+':00</span></div>';
+  }
+  h+='<div class="tick end" style="top:'+(P+H)+'px"><span>'+fmt(en)+'</span><b>Evaluation</b></div>';
+  if(o.bars){
+    var es=S.entries.map(function(e){return Object.assign({},e)}).sort(function(a,b){return a.start-b.start||a.end-b.end});
+    var groups=[],cl=[],cend=-1;
+    es.forEach(function(e){
+      if(cl.length&&e.start>=cend){groups.push(cl);cl=[];cend=-1}
+      cl.push(e);cend=Math.max(cend,e.end);
+    });
+    if(cl.length)groups.push(cl);
+    var bh='';
+    groups.forEach(function(g){
+      var ends=[];
+      g.forEach(function(e){
+        var l=ends.findIndex(function(x){return x<=e.start});
+        if(l<0){l=ends.length;ends.push(e.end)}else ends[l]=e.end;
+        e.lane=l;
+      });
+      var n=ends.length;
+      g.forEach(function(e){
+        var a=ACTS.find(function(x){return x.k===e.act});
+        var ht=Math.max((e.end-e.start)*PPM,6);
+        bh+='<button class="bar" data-id="'+e.id+'" title="'+a.n+' '+fmt(e.start)+'–'+fmt(e.end)+'" style="top:'+Y(e.start)+'px;height:'+ht+'px;left:calc('+e.lane+'*100%/'+n+' + 1px);width:calc(100%/'+n+' - 2px);--c:'+a.c+'">'
+          +(ht>=18?'<span>'+a.e+' '+a.n+'</span>':'')
+          +(ht>=36?'<span class="bt">'+fmt(e.start)+'–'+fmt(e.end)+'</span>':'')+'</button>';
+      });
+    });
+    h+='<div class="bars">'+bh+'</div>';
+  }
+  S.dots.forEach(function(d){
+    var y=Y(d.t), keys=Object.keys(d.sel), done=keys.length>0;
+    if(o.bars)h+='<div class="dline" style="top:'+y+'px"></div>';
+    h+='<span class="dlbl" style="top:'+y+'px">'+fmt(d.t)+'</span>';
+    if(o.dots==='plain'){
+      h+='<span class="dot" style="top:'+y+'px"></span>';
+    }else{
+      h+='<button class="dot tap'+((o.dots==='flag'&&!done)?' pulse':'')+'" data-dot="'+d.id+'" aria-label="Heart monitor press at '+fmt(d.t)+'" style="top:'+y+'px"></button>';
+      if(!done){
+        if(o.dots==='flag')h+='<button class="pill" data-dot="'+d.id+'" style="top:'+y+'px"><i class="ex">!</i><span>What did you feel?</span></button>';
+      }else{
+        var em=SYMS.filter(function(s){return d.sel[s.k]!==undefined}).map(function(s){return s.e}).join(' ');
+        h+='<button class="pill done" data-dot="'+d.id+'" style="top:'+y+'px"><i class="ok">✓</i><span>'+em+'</span></button>';
+      }
+    }
+  });
+  return h+'</div>';
+}
+
+/* ---------- Day 3 / 5 / review ---------- */
+function pDay(mode){
+  var mine=ACTS.filter(function(a){return S.acts.indexOf(a.k)>-1});
+  var cnt=function(k){return S.entries.filter(function(e){return e.act===k}).length};
+  var placed=mine.filter(function(a){return cnt(a.k)>0}).length;
+  var sub=mode==='review'?'Tap an activity or a red dot to edit your day.':'Tap an activity and set when it happened. '+placed+' of '+mine.length+' added.';
+  screen.innerHTML='<div class="page day"><div class="dayhdr"><h1>Your day</h1><p class="lead sm">'+sub+'</p></div>'
+   +'<div class="split"><div class="tlscroll" id="tls">'+timeline({bars:true,dots:mode==='review'?'detail':'plain'})+'</div>'
+   +'<div class="bcol">'+mine.map(function(a,i){return blob(a,ACTS.indexOf(a),{on:cnt(a.k)>0,count:cnt(a.k)>1?cnt(a.k):0,size:78})}).join('')+'</div></div></div>';
+  var tls=$('#tls'); tls.scrollTop=S.tl;
+  var leave=function(){S.tl=tls.scrollTop;S.from=mode};
+  screen.querySelectorAll('.bcol .blob').forEach(function(b){
+    b.onclick=function(){leave();S.editId=null;S.actKey=b.dataset.k;go('activity')};
+  });
+  screen.querySelectorAll('.bar').forEach(function(b){
+    b.onclick=function(){leave();var e=S.entries.find(function(x){return x.id==b.dataset.id});S.editId=e.id;S.actKey=e.act;go('activity')};
+  });
+  if(mode==='review'){
+    screen.querySelectorAll('[data-dot]').forEach(function(b){
+      b.onclick=function(){leave();S.dotId=+b.dataset.dot;go('symptom')};
+    });
+    setFab('OK',true,function(){go('bye')});
+  }else{
+    setFab('Next',mine.length>0&&placed===mine.length,function(){S.tl=0;go('sympList')});
+  }
+}
+
+/* ---------- Day 4: activity ---------- */
+function pAct(){
+  var a=ACTS.find(function(x){return x.k===S.actKey});
+  var ex=S.editId?S.entries.find(function(e){return e.id===S.editId}):null;
+  var endMin=evalMin(), h0=DAY_START/60, h1=Math.floor(endMin/60);
+  var sel=function(id,val){
+    var hv=val===null?'':Math.floor(val/60), mv=val===null?'':val%60, ho='<option value="">--</option>', mo='<option value="">--</option>';
+    for(var h=h0;h<=h1;h++)ho+='<option value="'+h+'"'+(hv===h?' selected':'')+'>'+pad2(h)+'</option>';
+    for(var m=0;m<60;m+=5)mo+='<option value="'+m+'"'+(mv===m?' selected':'')+'>'+pad2(m)+'</option>';
+    return '<div class="tsel"><select id="'+id+'h" aria-label="Hour">'+ho+'</select>:<select id="'+id+'m" aria-label="Minute">'+mo+'</select></div>';
+  };
+  var idx=ACTS.indexOf(a);
+  screen.innerHTML='<button class="back" id="bk" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>'
+   +'<div class="page sub"><div class="titlerow">'+blob(a,idx,{on:true,size:56})+'<h1>'+a.n+'</h1></div>'
+   +'<div class="sec">When did you do this?</div>'
+   +'<div class="times"><div class="tbox"><label>Start</label>'+sel('s',ex?ex.start:null)+'</div><div class="tbox"><label>End</label>'+sel('e',ex?ex.end:null)+'</div></div>'
+   +'<p class="err" id="terr"></p>'
+   +'<div class="sec" style="margin-top:12px">Notes</div>'
+   +'<textarea class="notes" id="nt" maxlength="400" placeholder="Anything worth mentioning? For example how it felt, or how intense it was."></textarea>'
+   +(ex?'<button class="link danger" id="rm">Remove from timeline</button>':'')+'</div>';
+  $('#nt').value=ex?ex.notes:'';
+  var gv=function(id){var h=$('#'+id+'h').value,m=$('#'+id+'m').value;return(h===''||m==='')?null:(+h)*60+(+m)};
+  var check=function(){
+    var s=gv('s'),e=gv('e'),msg='',ok=false;
+    if(s!==null&&e!==null){
+      if(e<=s)msg='The end time must be after the start time.';
+      else if(e>endMin)msg='Your day ends at '+fmt(endMin)+'.';
+      else ok=true;
+    }
+    $('#terr').textContent=msg; enableFab(ok);
+  };
+  ['sh','sm','eh','em'].forEach(function(id){$('#'+id).addEventListener('change',check)});
+  $('#bk').onclick=function(){go(S.from)};
+  if(ex)$('#rm').onclick=function(){S.entries=S.entries.filter(function(e){return e.id!==ex.id});go(S.from)};
+  setFab('OK',false,function(){
+    var rec={act:a.k,start:gv('s'),end:gv('e'),notes:$('#nt').value.trim()};
+    if(ex)Object.assign(ex,rec);else S.entries.push(Object.assign({id:S.uid++},rec));
+    go(S.from);
+  });
+  check();
+}
+
+/* ---------- Day 6: symptom dots ---------- */
+function pSymList(){
+  var done=S.dots.filter(function(d){return Object.keys(d.sel).length>0}).length;
+  screen.innerHTML='<div class="page day"><div class="dayhdr"><h1>Moments you felt something</h1>'
+   +'<p class="lead sm">You pressed your heart monitor at these times. Tap each one to tell us what you felt. '+done+' of '+S.dots.length+' done.</p></div>'
+   +'<div class="split"><div class="tlscroll full" id="tls">'+timeline({bars:false,dots:'flag'})+'</div></div></div>';
+  var tls=$('#tls'); tls.scrollTop=S.tl;
+  screen.querySelectorAll('[data-dot]').forEach(function(b){
+    b.onclick=function(){S.tl=tls.scrollTop;S.from='sympList';S.dotId=+b.dataset.dot;go('symptom')};
+  });
+  setFab('Next',done===S.dots.length,function(){go('bye')});
+}
+
+/* ---------- Day 7: symptom ---------- */
+function pSym(){
+  var d=S.dots.find(function(x){return x.id===S.dotId});
+  var draft=JSON.parse(JSON.stringify(d.sel));
+  var draw=function(){
+    var sc=$('.page',screen)?$('.page',screen).scrollTop:0;
+    var picked=SYMS.filter(function(s){return draft[s.k]!==undefined});
+    screen.innerHTML='<button class="back" id="bk" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>'
+     +'<div class="page sub"><h1 class="bigtime">'+fmt(d.t)+'</h1>'
+     +'<p class="lead">You pressed the button on your heart monitor. What did you feel?</p>'
+     +'<div class="sec" style="margin-top:0">Symptoms</div>'
+     +'<div class="grid">'+SYMS.map(function(s,i){return blob(s,i,{on:draft[s.k]!==undefined})}).join('')+'</div>'
+     +picked.map(function(s){return '<label class="fld"><span>'+s.l+'</span><input data-c="'+s.k+'" maxlength="140" placeholder="Add a short comment (optional)" value="'+esc(draft[s.k])+'"></label>'}).join('')
+     +'</div>';
+    $('.page',screen).scrollTop=sc;
+    $('#bk').onclick=function(){go(S.from)};
+    screen.querySelectorAll('.blob').forEach(function(b){
+      b.onclick=function(){
+        if(draft[b.dataset.k]!==undefined)delete draft[b.dataset.k];else draft[b.dataset.k]='';
+        draw();
+      };
+    });
+    screen.querySelectorAll('input[data-c]').forEach(function(i){
+      i.addEventListener('input',function(){draft[i.dataset.c]=i.value});
+    });
+    enableFab(Object.keys(draft).length>0);
+  };
+  draw();
+  setFab('OK',Object.keys(draft).length>0,function(){d.sel=draft;go(S.from)});
+}
+
+/* ---------- Day 9: bye ---------- */
+function pBye(){
+  setFab(null);
+  screen.innerHTML='<div class="page center"><div class="bigblob moon">🌙</div><h1>See you tomorrow :)</h1>'
+   +'<p class="lead">Your evaluation is saved and will appear next to your heart monitor data.</p>'
+   +'<button class="link" id="again">Start over (prototype)</button></div>'
+   +'<div class="bottombar"><button class="ghost" id="ov">See overview of your day</button></div>';
+  $('#ov').onclick=function(){S.tl=0;go('review')};
+  $('#again').onclick=restart;
+}
+
+function restart(){fresh();go('mitid')}
+$('#restart').onclick=restart;
+fresh();
+go('mitid');
+})();
+</script>
+</body>
+</html>
